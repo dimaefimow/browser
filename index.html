@@ -5,132 +5,93 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Мини Браузер</title>
     <style>
-        /* Стили остаются такими же как в предыдущем примере */
-        body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
-        .search-container { margin: 20px; display: flex; justify-content: center; gap: 10px; }
-        input[type="text"] { flex: 1; max-width: 600px; padding: 10px; font-size: 16px; }
-        button { padding: 10px 20px; cursor: pointer; }
-        iframe { width: 100%; height: calc(100vh - 100px); border: none; }
-        .search-results { width: 80%; margin: 20px auto; text-align: left; }
-        .result-item { margin-bottom: 15px; padding: 10px; border-bottom: 1px solid #eee; }
-        .result-title { color: #1a0dab; font-size: 18px; cursor: pointer; }
-        .result-title:hover { text-decoration: underline; }
-        .result-url { color: #006621; font-size: 14px; }
-        .result-snippet { color: #545454; font-size: 14px; }
-        .hidden { display: none; }
-        .loading { text-align: center; padding: 20px; }
+        body {
+            background: white;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+        }
+        .search-container {
+            margin: 20px;
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding: 0 10px;
+        }
+        input[type="text"] {
+            flex: 1 1 300px;
+            padding: 10px;
+            font-size: 16px;
+            max-width: 600px;
+            border: 1px solid #ccc;
+            border-radius: 24px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 24px;
+            background-color: #4285F4;
+            color: white;
+        }
+        .results-container {
+            margin-top: 10px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .result-item {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+            cursor: pointer;
+            margin-bottom: 5px;
+        }
+        .result-item:hover {
+            background-color: #f1f1f1;
+        }
+        iframe {
+            width: 100%;
+            height: calc(100vh - 180px);
+            border: none;
+        }
     </style>
 </head>
 <body>
     <div class="search-container">
-        <input type="text" id="urlInput" placeholder="Введите URL или поисковый запрос" autofocus>
-        <button onclick="searchOrNavigate()">Поиск</button>
+        <input type="text" id="searchInput" placeholder="Введите запрос для поиска">
+        <button onclick="searchQuery()">Поиск</button>
     </div>
-    
-    <div id="searchResults" class="search-results hidden"></div>
-    <div id="loading" class="loading hidden">Загрузка...</div>
-    <iframe id="browserFrame" src="about:blank" class="hidden"></iframe>
+    <div id="resultsContainer" class="results-container"></div>
+    <iframe id="browserFrame" src=""></iframe>
 
     <script>
-        async function searchOrNavigate() {
-            const input = document.getElementById('urlInput').value.trim();
-            
-            if (isUrl(input)) {
-                navigateToUrl(input);
-            } else {
-                await performSearch(input);
+        function searchQuery() {
+            const query = document.getElementById('searchInput').value;
+            if (query) {
+                fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json`)
+                    .then(response => response.json())
+                    .then(data => {
+                        const results = data.RelatedTopics;
+                        const resultsContainer = document.getElementById('resultsContainer');
+                        resultsContainer.innerHTML = '';
+                        results.forEach(item => {
+                            if (item.FirstURL) {
+                                const resultDiv = document.createElement('div');
+                                resultDiv.classList.add('result-item');
+                                resultDiv.textContent = item.Text;
+                                resultDiv.onclick = function () {
+                                    document.getElementById('browserFrame').src = item.FirstURL;
+                                };
+                                resultsContainer.appendChild(resultDiv);
+                            }
+                        });
+                    });
             }
         }
-        
-        function isUrl(input) {
-            try {
-                new URL(input.startsWith('http') ? input : `https://${input}`);
-                return true;
-            } catch {
-                return false;
-            }
-        }
-        
-        function navigateToUrl(rawUrl) {
-            let url = rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`;
-            document.getElementById('browserFrame').src = url;
-            document.getElementById('searchResults').classList.add('hidden');
-            document.getElementById('loading').classList.add('hidden');
-            document.getElementById('browserFrame').classList.remove('hidden');
-        }
-        
-        async function performSearch(query) {
-            document.getElementById('searchResults').innerHTML = '';
-            document.getElementById('searchResults').classList.remove('hidden');
-            document.getElementById('loading').classList.remove('hidden');
-            document.getElementById('browserFrame').classList.add('hidden');
-            
-            try {
-                // Используем DuckDuckGo API
-                const response = await fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&no_redirect=1`);
-                const data = await response.json();
-                
-                displayResults(data, query);
-            } catch (error) {
-                document.getElementById('searchResults').innerHTML = 
-                    `<div class="result-item">
-                        <div class="result-title">Ошибка поиска</div>
-                        <div class="result-snippet">Не удалось выполнить поиск. Попробуйте ещё раз.</div>
-                    </div>`;
-            } finally {
-                document.getElementById('loading').classList.add('hidden');
-            }
-        }
-        
-        function displayResults(data, query) {
-            const resultsContainer = document.getElementById('searchResults');
-            resultsContainer.innerHTML = `<h2>Результаты поиска: "${query}"</h2>`;
-            
-            if (data.RelatedTopics && data.RelatedTopics.length > 0) {
-                data.RelatedTopics.forEach(topic => {
-                    if (topic.FirstURL && topic.Text) {
-                        const resultElement = document.createElement('div');
-                        resultElement.className = 'result-item';
-                        
-                        resultElement.innerHTML = `
-                            <div class="result-title">${topic.Text.split(' — ')[0]}</div>
-                            <div class="result-url">${topic.FirstURL}</div>
-                            <div class="result-snippet">${topic.Text}</div>
-                        `;
-                        
-                        resultElement.querySelector('.result-title').onclick = () => {
-                            navigateToUrl(topic.FirstURL);
-                        };
-                        
-                        resultsContainer.appendChild(resultElement);
-                    }
-                });
-            } else if (data.AbstractURL) {
-                // Если есть прямая статья (например, для известных понятий)
-                resultsContainer.innerHTML += `
-                    <div class="result-item">
-                        <div class="result-title">${data.Heading || query}</div>
-                        <div class="result-url">${data.AbstractURL}</div>
-                        <div class="result-snippet">${data.AbstractText || 'Нет описания'}</div>
-                    </div>
-                `;
-                
-                resultsContainer.querySelector('.result-title').onclick = () => {
-                    navigateToUrl(data.AbstractURL);
-                };
-            } else {
-                resultsContainer.innerHTML += `
-                    <div class="result-item">
-                        <div class="result-snippet">Ничего не найдено. Попробуйте изменить запрос.</div>
-                    </div>
-                `;
-            }
-        }
-        
-        // Обработка нажатия Enter
-        document.getElementById('urlInput').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') searchOrNavigate();
-        });
     </script>
 </body>
 </html>

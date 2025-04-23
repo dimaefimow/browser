@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Универсальный поисковик</title>
+    <title>Мини Браузер</title>
     <style>
         :root {
-            --primary-color: #4e89e8;
-            --secondary-color: #3a6fc8;
+            --primary-color: #4361ee;
+            --secondary-color: #3f37c9;
             --text-color: #2b2d42;
             --light-color: #f8f9fa;
             --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
@@ -90,35 +90,8 @@
             background: rgba(255, 255, 255, 0.3);
         }
         
-        .search-engine-selector {
-            display: flex;
-            gap: 0.5rem;
-            margin-left: auto;
-            flex-shrink: 0;
-        }
-        
-        .search-engine-btn {
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-            border: none;
-            border-radius: var(--border-radius);
-            padding: 0.4rem 0.8rem;
-            cursor: pointer;
-            transition: all 0.3s;
-            font-size: 0.8rem;
-        }
-        
-        .search-engine-btn.active {
-            background: rgba(255, 255, 255, 0.3);
-            font-weight: bold;
-        }
-        
-        .search-engine-btn:hover {
-            background: rgba(255, 255, 255, 0.25);
-        }
-        
         .content {
-            margin-top: 60px;
+            margin-top: 60px; /* Высота header */
             flex: 1;
             display: flex;
             flex-direction: column;
@@ -151,7 +124,7 @@
         
         input[type="text"]:focus {
             border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(78, 137, 232, 0.2);
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
         }
         
         button {
@@ -236,50 +209,6 @@
             border-top: 1px solid #ddd;
         }
         
-        .search-results {
-            display: none;
-            padding: 1rem;
-            background: white;
-            border-top: 1px solid #eee;
-        }
-        
-        .search-result {
-            margin-bottom: 1rem;
-            padding: 0.5rem;
-            border-radius: var(--border-radius);
-            transition: background-color 0.2s;
-        }
-        
-        .search-result:hover {
-            background-color: var(--light-color);
-        }
-        
-        .search-result-title {
-            font-weight: 500;
-            color: var(--primary-color);
-            margin-bottom: 0.25rem;
-            text-decoration: none;
-            display: block;
-        }
-        
-        .search-result-url {
-            font-size: 0.8rem;
-            color: #0a7e07;
-            margin-bottom: 0.25rem;
-        }
-        
-        .search-result-snippet {
-            font-size: 0.9rem;
-            color: #555;
-        }
-        
-        .search-meta {
-            color: #666;
-            font-size: 0.9rem;
-            margin-bottom: 1rem;
-            padding: 0 0.5rem;
-        }
-        
         @media (max-width: 600px) {
             .header {
                 padding: 0.5rem;
@@ -292,10 +221,6 @@
             .nav-button {
                 padding: 0.4rem 0.6rem;
                 font-size: 0.8rem;
-            }
-            
-            .search-engine-selector {
-                display: none;
             }
             
             .search-bar {
@@ -314,25 +239,20 @@
 </head>
 <body>
     <div class="header" id="header">
-        <h1>Универсальный поисковик</h1>
+        <h1>Мини Браузер</h1>
         <div class="nav-buttons">
             <button class="nav-button" onclick="window.history.back()">← Назад</button>
             <button class="nav-button" onclick="window.history.forward()">Вперёд →</button>
-            <button class="nav-button" onclick="resetBrowser()">Новая</button>
-            <button class="nav-button" onclick="refreshPage()">⟳</button>
-        </div>
-        <div class="search-engine-selector">
-            <button class="search-engine-btn active" data-engine="duckduckgo">DuckDuckGo</button>
-            <button class="search-engine-btn" data-engine="searx">Searx</button>
-            <button class="search-engine-btn" data-engine="direct">Прямой URL</button>
+            <button class="nav-button" onclick="document.getElementById('browserFrame').src = 'about:blank';">Новая</button>
+            <button class="nav-button" onclick="document.getElementById('browserFrame').src = document.getElementById('browserFrame').src;">⟳</button>
         </div>
     </div>
     
     <div class="content">
         <div class="search-container">
             <div class="search-bar">
-                <input type="text" id="urlInput" placeholder="Введите поисковый запрос или URL">
-                <button onclick="handleSearch()">Найти</button>
+                <input type="text" id="urlInput" placeholder="Введите URL или поисковый запрос">
+                <button onclick="openUrl()">Перейти</button>
             </div>
             
             <button class="toggle-history" onclick="toggleHistory()">
@@ -344,207 +264,43 @@
             </div>
         </div>
         
-        <div class="search-results" id="searchResults">
-            <!-- Результаты поиска будут здесь -->
-        </div>
-        
         <iframe id="browserFrame" src="about:blank"></iframe>
     </div>
 
     <script>
-        // Текущий выбранный поисковик
-        let currentEngine = 'duckduckgo';
-        
-        // Инициализация поисковиков
-        const searchEngines = {
-            duckduckgo: {
-                name: 'DuckDuckGo',
-                searchUrl: query => `https://duckduckgo.com/html/?q=${encodeURIComponent(query)}`,
-                parseResults: (html) => {
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(html, 'text/html');
-                    const results = [];
-                    
-                    doc.querySelectorAll('.result').forEach(result => {
-                        const titleEl = result.querySelector('.result__title a');
-                        const snippetEl = result.querySelector('.result__snippet');
-                        const urlEl = result.querySelector('.result__url');
-                        
-                        if (titleEl && snippetEl && urlEl) {
-                            results.push({
-                                title: titleEl.textContent,
-                                url: titleEl.href,
-                                snippet: snippetEl.textContent,
-                                displayUrl: urlEl.textContent
-                            });
-                        }
-                    });
-                    
-                    return results;
-                }
-            },
-            searx: {
-                name: 'Searx',
-                searchUrl: query => `https://searx.be/search?q=${encodeURIComponent(query)}&format=html`,
-                parseResults: (html) => {
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(html, 'text/html');
-                    const results = [];
-                    
-                    doc.querySelectorAll('.result').forEach(result => {
-                        const titleEl = result.querySelector('h3 a');
-                        const snippetEl = result.querySelector('.content');
-                        const urlEl = result.querySelector('.url');
-                        
-                        if (titleEl && snippetEl) {
-                            results.push({
-                                title: titleEl.textContent,
-                                url: titleEl.href,
-                                snippet: snippetEl.textContent,
-                                displayUrl: urlEl ? urlEl.textContent : titleEl.href
-                            });
-                        }
-                    });
-                    
-                    return results;
-                }
-            }
-        };
-        
         let history = JSON.parse(localStorage.getItem('browserHistory')) || [];
         let lastScrollPosition = 0;
         const header = document.getElementById('header');
-        const searchResults = document.getElementById('searchResults');
-        
-        // Инициализация выбора поисковика
-        document.querySelectorAll('.search-engine-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.search-engine-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                currentEngine = btn.dataset.engine;
-                
-                if (currentEngine === 'direct') {
-                    document.getElementById('urlInput').placeholder = "Введите URL сайта";
-                } else {
-                    document.getElementById('urlInput').placeholder = `Введите поисковый запрос для ${searchEngines[currentEngine]?.name || 'поиска'}`;
-                }
-            });
-        });
         
         // Логика скрытия/показа header при прокрутке
         window.addEventListener('scroll', function() {
             const currentScrollPosition = window.pageYOffset;
             
             if (currentScrollPosition <= 0) {
+                // Вверху страницы - показываем header
                 header.classList.remove('hidden');
                 return;
             }
             
             if (currentScrollPosition > lastScrollPosition) {
+                // Прокрутка вниз - скрываем header
                 header.classList.add('hidden');
             } else {
+                // Прокрутка вверх - показываем header
                 header.classList.remove('hidden');
             }
             
             lastScrollPosition = currentScrollPosition;
         });
         
-        function handleSearch() {
-            const query = document.getElementById('urlInput').value.trim();
-            
-            if (!query) return;
-            
-            if (currentEngine === 'direct' || isValidUrl(query)) {
-                // Если выбран прямой URL или введён валидный URL
-                openUrl(query);
-            } else {
-                // Выполняем поиск через выбранный движок
-                performSearch(query);
-            }
-        }
-        
-        function performSearch(query) {
-            showLoading();
-            
-            if (currentEngine === 'duckduckgo' || currentEngine === 'searx') {
-                const engine = searchEngines[currentEngine];
-                
-                fetch(engine.searchUrl(query))
-                    .then(response => {
-                        if (!response.ok) throw new Error('Ошибка сети');
-                        return response.text();
-                    })
-                    .then(html => {
-                        const results = engine.parseResults(html);
-                        displaySearchResults(results, query);
-                        addToHistory(`Поиск (${engine.name}): ${query}`, `search:${currentEngine}:${query}`);
-                    })
-                    .catch(error => {
-                        console.error('Ошибка поиска:', error);
-                        showError();
-                    });
-            }
-        }
-        
-        function showLoading() {
-            searchResults.innerHTML = '<div style="padding: 2rem; text-align: center;">Идет поиск...</div>';
-            searchResults.style.display = 'block';
-            document.getElementById('browserFrame').style.display = 'none';
-        }
-        
-        function showError() {
-            searchResults.innerHTML = `
-                <div style="padding: 2rem; text-align: center; color: #dc3545;">
-                    Ошибка при выполнении поиска. Попробуйте другой поисковик или повторите позже.
-                </div>
-            `;
-            searchResults.style.display = 'block';
-            document.getElementById('browserFrame').style.display = 'none';
-        }
-        
-        function displaySearchResults(results, query) {
-            if (!results || results.length === 0) {
-                searchResults.innerHTML = `
-                    <div style="padding: 2rem; text-align: center;">
-                        По запросу "${query}" ничего не найдено. Попробуйте изменить формулировку.
-                    </div>
-                `;
-                return;
-            }
-            
-            let resultsHTML = `
-                <div class="search-meta">
-                    Найдено результатов: ${results.length} | Поисковая система: ${searchEngines[currentEngine].name}
-                </div>
-            `;
-            
-            results.forEach(result => {
-                resultsHTML += `
-                    <div class="search-result">
-                        <a href="${result.url}" class="search-result-title" target="_blank" onclick="openUrl('${result.url}'); return false;">
-                            ${result.title}
-                        </a>
-                        <div class="search-result-url">${result.displayUrl || result.url}</div>
-                        <div class="search-result-snippet">${result.snippet}</div>
-                    </div>
-                `;
-            });
-            
-            searchResults.innerHTML = resultsHTML;
-            searchResults.style.display = 'block';
-            document.getElementById('browserFrame').style.display = 'none';
-        }
-        
-        function openUrl(url) {
-            if (!url) {
-                url = document.getElementById('urlInput').value.trim();
-            }
-            
+        function openUrl() {
+            let url = document.getElementById('urlInput').value.trim();
             let displayUrl = url;
             
+            // Если это не URL, делаем поиск через Google
             if (!isValidUrl(url)) {
                 displayUrl = `Поиск: ${url}`;
-                url = searchEngines.duckduckgo.searchUrl(url);
+                url = 'https://www.google.com/search?q=' + encodeURIComponent(url);
             } else {
                 if (!url.startsWith('http://') && !url.startsWith('https://')) {
                     url = 'https://' + url;
@@ -552,17 +308,20 @@
             }
             
             document.getElementById('browserFrame').src = url;
-            document.getElementById('browserFrame').style.display = 'block';
-            searchResults.style.display = 'none';
             
+            // Добавляем в историю
             addToHistory(displayUrl, url);
+            
+            // Показываем header после перехода
             header.classList.remove('hidden');
         }
         
         function addToHistory(title, url) {
+            // Проверяем, нет ли уже такого URL в истории
             if (!history.some(item => item.url === url)) {
                 history.unshift({ title, url });
                 
+                // Ограничиваем историю 20 элементами
                 if (history.length > 20) {
                     history.pop();
                 }
@@ -591,15 +350,7 @@
                 
                 historyItem.addEventListener('click', () => {
                     document.getElementById('urlInput').value = item.url;
-                    
-                    if (item.url.startsWith('search:')) {
-                        const [_, engine, query] = item.url.split(':');
-                        document.querySelector(`.search-engine-btn[data-engine="${engine}"]`).click();
-                        performSearch(query);
-                    } else {
-                        openUrl(item.url);
-                    }
-                    
+                    document.getElementById('browserFrame').src = item.url;
                     header.classList.remove('hidden');
                 });
                 
@@ -623,23 +374,12 @@
             }
         }
         
-        function resetBrowser() {
-            document.getElementById('browserFrame').src = 'about:blank';
-            document.getElementById('urlInput').value = '';
-            document.getElementById('browserFrame').style.display = 'block';
-            searchResults.style.display = 'none';
-        }
-        
-        function refreshPage() {
-            const frame = document.getElementById('browserFrame');
-            frame.src = frame.src;
-        }
-        
         function isValidUrl(string) {
             try {
                 new URL(string);
                 return true;
             } catch (_) {
+                // Проверяем доменное имя (например, google.com)
                 const pattern = /^[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9](?:\.[a-zA-Z]{2,})+$/;
                 return pattern.test(string);
             }
@@ -648,7 +388,7 @@
         // Открывать URL при нажатии Enter
         document.getElementById('urlInput').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
-                handleSearch();
+                openUrl();
             }
         });
         
